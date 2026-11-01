@@ -7,32 +7,17 @@ import { resetHeroForgeStore } from '../store';
 
 interface HeaderProps {
   currentTab: string;
-  onNavigateToTree: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentTab, onNavigateToTree }) => {
+export const Header: React.FC<HeaderProps> = ({ currentTab }) => {
   const dispatch = useAppDispatch();
 
   const handleReset = () => {
     dispatch(resetHeroForgeStore());
   };
 
-  const getSubtitle = () => {
-    switch (currentTab) {
-      case 'console':
-        return 'Hero Console & State Bridge';
-      case 'tree':
-        return 'RootState Tree Inspector';
-      case 'dispatch':
-        return 'RTK Dispatch Studio';
-      case 'inventory':
-        return 'Armory & Encumbrance Stash';
-      case 'academy':
-        return 'Architecture Academy & Video Guide';
-      default:
-        return 'Hero Console';
-    }
-  };
+  const getSubtitle = () =>
+    currentTab === 'dispatch' ? 'RTK Dispatch Studio' : 'Hero Console & State Bridge';
 
   return (
     <View style={styles.container}>
@@ -55,15 +40,6 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onNavigateToTree }) 
           accessibilityLabel="Reset Redux Store"
         >
           <MaterialIcons name="restart-alt" size={20} color={theme.colors.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={onNavigateToTree}
-          style={[styles.iconButton, currentTab === 'tree' && styles.iconButtonActive]}
-          activeOpacity={0.7}
-          accessibilityLabel="Toggle Store Architecture"
-        >
-          <MaterialIcons name="account-tree" size={20} color={theme.colors.primary} />
         </TouchableOpacity>
 
         <View style={styles.avatarCircle}>

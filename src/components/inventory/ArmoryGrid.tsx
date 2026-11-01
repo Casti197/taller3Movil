@@ -3,13 +3,21 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { selectInventory } from '../../store/selectors';
+import {
+  selectInventory,
+  selectIsOverencumbered,
+  selectTotalWeight,
+  selectMaxWeightCapacity,
+} from '../../store/selectors';
 import { toggleEquipItem, clearEquipment } from '../../store/slices/inventorySlice';
 import { InventoryItem } from '../../types';
 
 export const ArmoryGrid: React.FC = () => {
   const dispatch = useAppDispatch();
   const inventory = useAppSelector(selectInventory);
+  const isOverloaded = useAppSelector(selectIsOverencumbered);
+  const totalWeight = useAppSelector(selectTotalWeight);
+  const maxWeightCapacity = useAppSelector(selectMaxWeightCapacity);
 
   const handleToggle = (itemId: string) => {
     dispatch(toggleEquipItem(itemId));
@@ -55,6 +63,19 @@ export const ArmoryGrid: React.FC = () => {
           {inventory.equippedIds.length} / {inventory.catalog.length} Equipados
         </Text>
       </View>
+
+      {/* Overencumbered Alert */}
+      {isOverloaded && (
+        <View style={styles.overloadAlert}>
+          <MaterialIcons name="report" size={18} color={theme.colors.secondary} />
+          <View style={styles.overloadTexts}>
+            <Text style={styles.overloadTitle}>¡SOBRECARGADO! (-50% Velocidad)</Text>
+            <Text style={styles.overloadSub}>
+              {totalWeight} / {maxWeightCapacity} Kg — sube STR o desequipa algo
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* 2-Column Grid */}
       <View style={styles.grid}>
@@ -188,6 +209,31 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontWeight: '700',
     color: theme.colors.primary,
+  },
+  overloadAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: theme.colors.secondary,
+    borderRadius: theme.borderRadius.md,
+    padding: 8,
+    marginBottom: 10,
+  },
+  overloadTexts: {
+    flex: 1,
+  },
+  overloadTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: theme.colors.secondary,
+  },
+  overloadSub: {
+    fontSize: 10,
+    color: theme.colors.onSurfaceVariant,
+    fontFamily: 'monospace',
+    marginTop: 2,
   },
   grid: {
     flexDirection: 'row',

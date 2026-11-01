@@ -19,7 +19,7 @@ const initialCatalog: InventoryItem[] = [
     name: 'Escudo de Titanio',
     icon: 'shield',
     category: 'shields',
-    bonusStr: 10,
+    bonusStr: 4,
     bonusAgi: 0,
     bonusInt: 0,
     weight: 22,
@@ -53,12 +53,13 @@ const initialCatalog: InventoryItem[] = [
   {
     id: 'item_armor',
     name: 'Armadura Maldita',
-    icon: 'shield',
+    icon: 'security',
     category: 'armor',
-    bonusStr: 15,
+    // Maldita: casi no da fuerza pero pesa muchísimo -> provoca la sobrecarga
+    bonusStr: 3,
     bonusAgi: 0,
     bonusInt: 0,
-    weight: 35,
+    weight: 40,
     rarity: 'Legendario',
     slot: 'Pecho',
   },
@@ -109,23 +110,6 @@ export const inventorySlice = createSlice({
     clearEquipment: (state) => {
       state.equippedIds = [];
     },
-    generateLoot: (state) => {
-      const randomSuffix = Math.floor(Math.random() * 900 + 100);
-      const isHeavy = Math.random() > 0.5;
-      const newItem: InventoryItem = {
-        id: `loot_${Date.now()}`,
-        name: `Reliquia Ancestral #${randomSuffix}`,
-        icon: 'auto-awesome',
-        category: 'relics',
-        bonusStr: isHeavy ? 6 : 0,
-        bonusAgi: !isHeavy ? 5 : 0,
-        bonusInt: 8,
-        weight: isHeavy ? 14 : 3,
-        rarity: isHeavy ? 'Legendario' : 'Raro',
-        slot: 'Reliquia',
-      };
-      state.catalog.unshift(newItem);
-    },
     resetInventory: (state) => {
       state.catalog = initialCatalog;
       state.equippedIds = [];
@@ -136,7 +120,6 @@ export const inventorySlice = createSlice({
 export const {
   toggleEquipItem,
   clearEquipment,
-  generateLoot,
   resetInventory,
 } = inventorySlice.actions;
 

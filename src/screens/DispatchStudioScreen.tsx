@@ -140,7 +140,7 @@ export const DispatchStudioScreen: React.FC = () => {
 
         <View style={styles.telemetryRight}>
           <View style={styles.pulseDot} />
-          <Text style={styles.telemetryRightText}>STORE SYNC: 120 FPS</Text>
+          <Text style={styles.telemetryRightText}>STORE CONECTADO</Text>
         </View>
       </View>
 
@@ -152,11 +152,11 @@ export const DispatchStudioScreen: React.FC = () => {
             <Text style={styles.heroCardTitle}>RTK DISPATCH STUDIO</Text>
           </View>
           <View style={styles.immerBadge}>
-            <Text style={styles.immerBadgeText}>Immer Proxy: Active</Text>
+            <Text style={styles.immerBadgeText}>createSlice + Immer</Text>
           </View>
         </View>
         <Text style={styles.heroCardDesc}>
-          Inyecta mutaciones controladas al grafo de estado de HeroForge. Valida inmutabilidad, middleware diffs y evaluadores de combate en tiempo real.
+          Elige un action creator, edita su payload y despáchalo al store. Vuelve a Console para ver cómo reaccionan las 4 zonas.
         </Text>
       </View>
 
@@ -301,7 +301,7 @@ export const DispatchStudioScreen: React.FC = () => {
         <View style={styles.middlewareHeader}>
           <View style={styles.middlewareTitleRow}>
             <MaterialIcons name="history" size={18} color={theme.colors.tertiary} />
-            <Text style={styles.middlewareTitle}>MIDDLEWARE EXECUTION TRACE</Text>
+            <Text style={styles.middlewareTitle}>ÚLTIMAS ACCIONES (actionLogSlice)</Text>
           </View>
           <View style={styles.middlewareControls}>
             <TouchableOpacity onPress={() => dispatch(clearActionLog())} activeOpacity={0.7}>
@@ -341,7 +341,7 @@ export const DispatchStudioScreen: React.FC = () => {
                     </Text>
                   </View>
                   <View style={styles.diffCol}>
-                    <Text style={styles.diffHeader}>NEXT IMMER TREE</Text>
+                    <Text style={styles.diffHeader}>ESTADO ACTUAL</Text>
                     <Text style={[styles.diffContent, { color }]} numberOfLines={1}>
                       {`{ HP: ${stats.currentHp}, STR: ${stats.str}, EQ: ${inventory.equippedIds.length} }`}
                     </Text>

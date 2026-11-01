@@ -1,16 +1,33 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { useAppSelector } from '../../store';
-import { selectHeroComputedStatus, selectStats } from '../../store/selectors';
+import {
+  selectHeroComputedStatus,
+  selectStats,
+  selectHpStatus,
+  selectMana,
+  selectEquippedWeapon,
+} from '../../store/selectors';
+import { HpStatus } from '../../types';
+
+const EXPRESSIONS: Record<HpStatus, string> = {
+  SANO: '😎',
+  HERIDO: '😣',
+  DERROTADO: '💀',
+};
 
 export const HeroAvatarHUD: React.FC = () => {
   const stats = useAppSelector(selectStats);
   const status = useAppSelector(selectHeroComputedStatus);
+  const hpStatus = useAppSelector(selectHpStatus);
+  const mana = useAppSelector(selectMana);
+  const weapon = useAppSelector(selectEquippedWeapon);
 
   const hpPercent = Math.max(0, Math.min(100, (stats.currentHp / stats.maxHp) * 100));
-  const mpPercent = Math.max(0, Math.min(100, (stats.currentMp / stats.maxMp) * 100));
+  const mpPercent = Math.max(0, Math.min(100, (mana.currentMp / mana.maxMp) * 100));
+  const hpBarColor = hpStatus === 'HERIDO' ? theme.colors.amber : theme.colors.secondary;
   const weightPercent = Math.max(0, Math.min(100, (status.totalWeight / status.maxWeightCapacity) * 100));
 
   // Determine weight bar color
@@ -26,14 +43,14 @@ export const HeroAvatarHUD: React.FC = () => {
       {/* Zone Header Tag */}
       <View style={styles.headerRow}>
         <View style={styles.selectorTag}>
-          <Text style={styles.selectorTagText}>useSelector(selectHeroDerivedStats)</Text>
+          <Text style={styles.selectorTagText}>useSelector(selectHeroComputedStatus)</Text>
           <Text style={styles.zoneText}>ZONA A</Text>
         </View>
 
         <View style={styles.syncPill}>
           <View style={styles.syncDot} />
           <Text style={styles.syncText}>
-            {status.isDefeated ? 'DERROTADO' : 'SINCRONIZADO'}
+            {hpStatus}
           </Text>
         </View>
       </View>
@@ -42,13 +59,12 @@ export const HeroAvatarHUD: React.FC = () => {
       <View style={styles.profileRow}>
         {/* Dynamic Aura Avatar */}
         <View style={[styles.avatarAura, { borderColor: status.auraColor, shadowColor: status.auraColor }]}>
-          <View style={styles.avatarInner}>
-            <Image
-              source={{
-                uri: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&q=80',
-              }}
-              style={styles.avatarImg}
-            />
+          <View style={[styles.avatarInner, { backgroundColor: `${status.auraColor}22` }]}>
+            {/* Aspecto según la clase + expresión según el HP */}
+            <Text style={[styles.avatarEmoji, hpStatus === 'HERIDO' && styles.avatarHurt]}>
+              {status.heroEmoji}
+            </Text>
+            <Text style={styles.expressionEmoji}>{EXPRESSIONS[hpStatus]}</Text>
             {status.isDefeated && (
               <View style={styles.defeatedOverlay}>
                 <MaterialIcons name="dangerous" size={24} color={theme.colors.secondary} />
@@ -63,6 +79,17 @@ export const HeroAvatarHUD: React.FC = () => {
               color={status.auraColor}
             />
           </View>
+
+          {/* Arma en mano */}
+          {weapon && (
+            <View style={[styles.weaponBadge, { backgroundColor: theme.colors.surfaceContainerHighest }]}>
+              <MaterialIcons
+                name={weapon.icon as keyof typeof MaterialIcons.glyphMap}
+                size={14}
+                color={theme.colors.onSurface}
+              />
+            </View>
+          )}
         </View>
 
         {/* Identity & Combat Power */}
@@ -109,8 +136,8 @@ export const HeroAvatarHUD: React.FC = () => {
         <View style={styles.barGroup}>
           <View style={styles.barHeader}>
             <View style={styles.barLabelRow}>
-              <MaterialIcons name="favorite" size={14} color={theme.colors.secondary} />
-              <Text style={[styles.barTitle, { color: theme.colors.secondary }]}>Vida (HP)</Text>
+              <MaterialIcons name="favorite" size={14} color={hpBarColor} />
+              <Text style={[styles.barTitle, { color: hpBarColor }]}>Vida (HP)</Text>
             </View>
             <Text style={styles.barValueText}>
               {stats.currentHp} / {stats.maxHp}
@@ -120,7 +147,7 @@ export const HeroAvatarHUD: React.FC = () => {
             <View
               style={[
                 styles.barFill,
-                { width: `${hpPercent}%`, backgroundColor: theme.colors.secondary },
+                { width: `${hpPercent}%`, backgroundColor: hpBarColor },
               ]}
             />
           </View>
@@ -134,7 +161,7 @@ export const HeroAvatarHUD: React.FC = () => {
               <Text style={[styles.barTitle, { color: theme.colors.primary }]}>Maná / Arcane (MP)</Text>
             </View>
             <Text style={styles.barValueText}>
-              {stats.currentMp} / {stats.maxMp}
+              {mana.currentMp} / {mana.maxMp}
             </Text>
           </View>
           <View style={styles.barTrack}>
@@ -265,9 +292,31 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: theme.colors.surfaceContainerLowest,
   },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
+  avatarEmoji: {
+    flex: 1,
+    fontSize: 38,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    lineHeight: 68,
+  },
+  avatarHurt: {
+    opacity: 0.6,
+  },
+  expressionEmoji: {
+    position: 'absolute',
+    top: 2,
+    left: 4,
+    fontSize: 16,
+  },
+  weaponBadge: {
+    position: 'absolute',
+    bottom: -6,
+    left: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   defeatedOverlay: {
     position: 'absolute',

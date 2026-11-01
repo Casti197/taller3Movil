@@ -1,130 +1,87 @@
 # HeroForge RPG — Arquitectura de Estado Visual con Redux Toolkit en React Native
 
-Proyecto móvil desarrollado en **React Native con Expo y TypeScript**, basado en el diseño importado del proyecto Stitch **"Diseño Claro para IA"** (Taller Práctico de Desarrollo Móvil).
+Mini-juego móvil hecho con **React Native (Expo) + TypeScript + Redux Toolkit** para el taller de Desarrollo Móvil. Cada acción despachada en una zona de la pantalla provoca reacciones visuales inmediatas en **4 componentes independientes** que no se pasan props entre sí: todos leen del mismo Store.
 
 ---
 
-## 🎮 Demostración Visual del "Efecto Dominó" en Redux
+## 🔁 Flujo unidireccional de Redux
 
-La aplicación demuestra de forma gráfica el flujo unidireccional de datos en Redux:
-$$\text{UI Component} \longrightarrow \text{dispatch(action)} \longrightarrow \text{Reducer (Immer)} \longrightarrow \text{Store Update} \longrightarrow \text{Memoized Selectors} \longrightarrow \text{Re-render}$$
+```
+ ┌──────────────┐  dispatch(action)  ┌──────────────┐   reducers (Immer)  ┌──────────────┐
+ │ UI Component │ ─────────────────▶ │  Middleware  │ ──────────────────▶ │    Store     │
+ │ (toque, +/-) │                    │ (meta/log)   │                     │ stats, inv., │
+ └──────────────┘                    └──────────────┘                     │ combat, log  │
+        ▲                                                                 └──────┬───────┘
+        │ re-render                       useAppSelector(selector)               │
+        └──────────────────────── Selectores derivados ◀─────────────────────────┘
+                              (stats totales, peso, poder, clase)
+```
 
-Al interactuar con un control (como equipar un arma pesada o seleccionar un preset de build), **al menos 4 zonas independientes se sincronizan de inmediato sin pasar props (0 Prop Drilling)**:
+Ejemplo: tocar **Armadura Maldita** despacha `inventory/toggleEquipItem` con payload `"item_armor"`. El reducer agrega el id a `equippedIds` y, sin que ninguna zona hable con otra:
 
-1. **Zona A: Avatar & HUD Superior (`<HeroAvatarHUD />`)**
-   - Aura dinámica que cambia de color según la clase dominante:
-     - 🔴 Berserker Implacable (STR ≥ 15)
-     - 🔵 Archimago Arcano (INT ≥ 15)
-     - 🟢 Asesino Sombrío (AGI ≥ 15)
-     - ⚪ Novato / Aldeano (Valores base)
-   - Barras reactivas de Vida (HP), Maná (MP) y Carga de Mochila (Kg).
-   - Detección inmediata de **Sobrecarga de Peso** con penalización visual de `-30% Poder de Combate` y `-50% Velocidad`.
-
-2. **Zona B: Panel de Entrenamiento de Atributos (`<StatsControlPanel />`)**
-   - Contador de 15 puntos de habilidad disponibles.
-   - Controles `[-]` y `[+]` para **Fuerza (STR)**, **Agilidad (AGI)** e **Inteligencia (INT)** con micro-barras y chips de bono de armas.
-   - Presets rápidos de acción única (`Guerrero`, `Mago`, `Pícaro`) y botón de **Poción de Reseteo**.
-
-3. **Zona C: Armería & Mochila (`<ArmoryGrid />`)**
-   - Cuadrícula de ítems (Espada de Fuego, Escudo de Titanio, Báculo Arcano, Botas Élficas, Armadura Maldita, Dagas Gemelas, Reliquias).
-   - Tarjetas con estado activo brillante y botón de equipar/desequipar.
-
-4. **Zona D: Arena de Combate & Inspector en Vivo (`<ReduxLiveInspector />`)**
-   - Batalla interactiva contra el Jefe de Incursión (*Malakor el Inmutable*).
-   - Ticker de telemetría de Redux que registra en tiempo real las últimas acciones despachadas con su type, payload y diff.
+- **Zona A** recalcula el peso (40 / 26 Kg → barra roja), la clase cambia a *Tanque Pesado* y el poder baja un 30 %.
+- **Zona B** muestra el bono de la armadura junto a la Fuerza.
+- **Zona C** marca la tarjeta como equipada y muestra **¡SOBRECARGADO! (-50% Velocidad)**.
+- **Zona D** registra `[inventory/toggleEquipItem] -> "Armadura Maldita"` en el ticker y ajusta el daño contra el Boss.
 
 ---
 
-## 📱 Pantallas y Vistas Adicionales de la App
+## 🎮 Las 4 zonas (pestaña Console)
 
-La aplicación cuenta con una barra de navegación inferior con 5 vistas completas:
+| Zona | Componente | Qué hace | Store |
+|---|---|---|---|
+| A | `<HeroAvatarHUD />` | Avatar con aura, emoji de clase, expresión según HP y arma en mano. Barras de HP, Maná y Peso (verde → amarillo → rojo). Badge de clase automática. | Solo lee selectores |
+| B | `<StatsControlPanel />` | 15 puntos de habilidad, `[-]`/`[+]` para STR, AGI e INT, presets Guerrero/Mago/Pícaro y Poción de Reseteo. | Despacha a `statsSlice` |
+| C | `<ArmoryGrid />` | Cuadrícula de 7 ítems con bono y peso; tocar equipa/desequipa. Alerta de sobrecarga. | Despacha a `inventorySlice` |
+| D | `<ReduxLiveInspector />` | Combate contra el Boss (cuesta maná, el Boss contraataca), botón Curar y ticker con las últimas 5 acciones `[type] -> payload`. | Despacha a `combatSlice`/`statsSlice`, lee `actionLogSlice` |
 
-- **Console (`hero-console`):** Panel principal del juego interactivo con las 4 zonas conectadas.
-- **State Tree (`state-tree-inspector`):** Inspector del heap de memoria de Redux con nodos colapsables/expandibles (`stats`, `inventory`, `actionLog`), matriz de selectores memoizados en vivo y **Time Travel Debugger** con reproducción paso a paso.
-- **Dispatch (`action-dispatcher`):** Playground interactivo para construir acciones y payloads JSON, con escenarios de prueba en 1 toque y monitor de middleware.
-- **Inventory (`inventory-slice`):** Armería extendida con medidor de encumbramiento por zonas (Ágil, Carga Media, Límite Máximo), rig de equipamiento activo, filtros de categoría y generador de loot aleatorio.
-- **Academy (`redux-academy`):** Academia técnica con diagrama de flujo interactivo de 6 nodos, guion táctico para el video de 5 a 7 minutos, comparador de código (Antipatrón vs Selector Puro), simulador de rúbrica de 100 PTS y checklist de grabación.
+Clases del héroe (según la estadística dominante): ⚪ Aldeano · 🔴 Guerrero Berserker (STR ≥ 15) · 🔵 Archimago Arcano (INT ≥ 15) · 🟢 Asesino Sombrío (AGI ≥ 15) · 🟠 Tanque Pesado (carga ≥ 30 Kg y STR dominante).
+
+La pestaña **Dispatch** permite elegir un action creator, editar su payload en JSON y despacharlo a mano.
 
 ---
 
-## 🛠️ Arquitectura Técnica de Redux Toolkit
-
-Estructura de archivos en `src/`:
+## 🛠️ Arquitectura
 
 ```
 src/
-├── constants/
-│   └── theme.ts              # Tokens de color Cyber-Arcane, espaciados y bordes
-├── types/
-│   └── index.ts              # Interfaces estrictas en TypeScript
 ├── store/
-│   ├── index.ts              # configureStore, RootState, AppDispatch y hooks tipados
-│   ├── selectors.ts          # Selectores puros y memoizados (createSelector)
+│   ├── index.ts                 # configureStore, RootState, AppDispatch, hooks tipados
+│   ├── actionMetaMiddleware.ts  # Sella cada acción con id y hora (mantiene puros los reducers)
+│   ├── selectors.ts             # Estado derivado con createSelector
 │   └── slices/
-│       ├── statsSlice.ts     # Atributos, vitals, daño y presets de build
-│       ├── inventorySlice.ts # Catálogo, equipamiento y generación de botín
-│       ├── combatSlice.ts    # Estado del Boss y simulación de daño
-│       └── actionLogSlice.ts # Registro automático de auditoría con extraReducers/addMatcher
-├── components/
-│   ├── Header.tsx            # Cabecera con estado RTK y botón de reseteo
-│   ├── BottomNavBar.tsx      # Barra de navegación con 5 pestañas y telemetría
-│   ├── hero/
-│   │   └── HeroAvatarHUD.tsx # Zona A (HUD y avatar dinámico)
-│   ├── stats/
-│   │   └── StatsControlPanel.tsx # Zona B (Steppers de stats y presets)
-│   ├── inventory/
-│   │   └── ArmoryGrid.tsx    # Zona C (Cuadrícula de armería)
-│   └── arena/
-│       └── ReduxLiveInspector.tsx # Zona D (Boss arena y stream de acciones)
-└── screens/
-    ├── HeroConsoleScreen.tsx
-    ├── StateTreeScreen.tsx
-    ├── DispatchStudioScreen.tsx
-    ├── InventoryScreen.tsx
-    └── ArchitectureAcademyScreen.tsx
+│       ├── statsSlice.ts        # Atributos, HP, maná gastado, presets
+│       ├── inventorySlice.ts    # Catálogo y equippedIds
+│       ├── combatSlice.ts       # HP del Boss y feedback del combate
+│       └── actionLogSlice.ts    # Historial alimentado con extraReducers + addMatcher
+├── components/                  # UI: las 4 zonas + Header y BottomNavBar
+├── screens/                     # HeroConsoleScreen (4 zonas) y DispatchStudioScreen
+├── types/index.ts
+└── constants/theme.ts
 ```
 
-### Regla de Oro: Estado Derivado (Zero Redundancy)
+### Regla de oro: nada calculado se guarda en el State
 
-Los siguientes valores **NO se almacenan en los slices**; se calculan dinámicamente mediante **selectores memoizados** en `src/store/selectors.ts`:
+Estos valores se calculan en `src/store/selectors.ts` cruzando `statsSlice` e `inventorySlice`:
 
-- `selectTotalStats`: Suma de atributos base + bonos de ítems equipados.
-- `selectTotalWeight` y `selectIsOverloaded`: Suma del peso de los ítems equipados comparado contra la capacidad máxima calculada (`10 + (totalStr * 2)`).
-- `selectCombatPower`: Fórmula `(totalStr * 3) + (totalAgi * 2) + (totalInt * 3)` con penalización del 30% si está sobrecargado.
-- `selectHeroComputedStatus`: Consolida la clase visual del héroe, el icono y el color de aura.
+- `selectTotalStats`: atributos base + bonos de los ítems equipados.
+- `selectTotalWeight`, `selectMaxWeightCapacity` (`10 + STR total × 2`) y `selectIsOverencumbered`.
+- `selectCombatPower`: `STR×3 + AGI×2 + INT×3`, con −30 % si hay sobrecarga.
+- `selectHeroVisualClass`: clase, emoji, ícono y color de aura.
+- `selectHpStatus` (sano / herido / derrotado), `selectMana` (máximo = `20 + INT × 4`), `selectAttackDamage`, `selectCanAttack`.
+- `selectRecentActions`: últimas 5 acciones con el nombre del ítem en lugar de su id.
 
----
-
-## 🚀 Cómo Ejecutar el Proyecto
-
-1. **Instalar dependencias (si es necesario):**
-   ```bash
-   npm install
-   ```
-
-2. **Iniciar el servidor de desarrollo Expo:**
-   ```bash
-   npx expo start
-   ```
-
-3. **Abrir en tu dispositivo móvil o emulador:**
-   - Presiona `a` para abrir en emulador de Android.
-   - Presiona `w` para abrir en el navegador web.
-   - Escanea el código QR con la app **Expo Go** en tu teléfono físico (iOS o Android).
-
-4. **Verificación de tipado y diagnóstico:**
-   ```bash
-   npx tsc --noEmit
-   npx expo-doctor
-   ```
+Si el poder o la sobrecarga se guardaran en el slice, habría que actualizarlos a mano en cada reducer que toque stats o equipo, y tarde o temprano la UI mostraría valores contradictorios.
 
 ---
 
-## 📹 Guion Sugerido para el Video Explicativo (5 a 7 min)
+## 🚀 Cómo ejecutarlo
 
-| Tiempo | Momento | Enfoque |
-|---|---|---|
-| **0:00 - 1:30** | **Momento 1: El Problema Arquitectónico** | Explica las limitaciones de `useState` y prop-drilling en apps con vistas independientes. Presenta el ciclo unidireccional de Redux. |
-| **1:30 - 3:30** | **Momento 2: Demostración en Vivo** | Muestra el "Efecto Dominó" equipando un ítem pesado: cambia la clase, aura, barra de peso, poder de combate y se registra en el log. |
-| **3:30 - 5:30** | **Momento 3: Recorrido por el Código** | Abre `configureStore`, muestra cómo Immer gestiona la inmutabilidad en los slices y resalta los selectores derivados en `selectors.ts`. |
-| **5:30 - 6:30** | **Momento 4: Cierre Crítico** | Responde con criterio: `useState` para estado local efímero de UI vs `Redux Toolkit` para estado de dominio compartido y auditoría. |
+```bash
+npm install
+npx expo start
+```
+
+Escanea el QR con **Expo Go**, o presiona `a` (emulador Android) o `w` (navegador).
+
+Verificar tipos: `npx tsc --noEmit`

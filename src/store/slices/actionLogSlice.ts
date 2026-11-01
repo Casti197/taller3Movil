@@ -1,5 +1,8 @@
 import { createSlice, PayloadAction, UnknownAction } from '@reduxjs/toolkit';
 import { ActionLogEntry } from '../../types';
+import { ActionLogMeta } from '../actionMetaMiddleware';
+
+const MAX_HISTORY = 20;
 
 interface ActionLogState {
   history: ActionLogEntry[];
@@ -20,6 +23,45 @@ const initialState: ActionLogState = {
   lastActionId: 'init_1',
 };
 
+type LoggedAction = UnknownAction & { payload?: unknown; meta?: { logMeta?: ActionLogMeta } };
+
+// El id y la hora llegan en action.meta (los pone actionMetaMiddleware) -> reducer puro
+const readLogMeta = (action: LoggedAction): ActionLogMeta =>
+  action.meta?.logMeta ?? { logId: `act_${action.type}`, timestamp: '--:--:--' };
+
+const pushEntry = (state: ActionLogState, entry: ActionLogEntry) => {
+  state.history.unshift(entry);
+  if (state.history.length > MAX_HISTORY) {
+    state.history.pop();
+  }
+  state.lastActionId = entry.id;
+};
+
+const describeAction = (type: string) => {
+  let diff = 'MUTATION';
+  let category: ActionLogEntry['category'] = 'system';
+
+  if (type.startsWith('stats/')) {
+    category = 'stats';
+    if (type.includes('increment')) diff = 'STAT +1';
+    else if (type.includes('decrement')) diff = 'STAT -1';
+    else if (type.includes('takeDamage')) diff = 'DMG_REC';
+    else if (type.includes('healHero')) diff = 'HEALED';
+    else if (type.includes('spendMana')) diff = 'MP_USED';
+    else if (type.includes('applyBuildPreset')) diff = 'PRESET';
+    else if (type.includes('resetStats')) diff = 'RESET';
+  } else if (type.startsWith('inventory/')) {
+    category = 'inventory';
+    if (type.includes('toggleEquipItem')) diff = 'TOGGLE_EQUIP';
+    else if (type.includes('clearEquipment')) diff = 'UNEQUIP_ALL';
+  } else if (type.startsWith('combat/')) {
+    category = 'combat';
+    diff = type.includes('resetBoss') ? 'BOSS_RESET' : 'BOSS_HIT';
+  }
+
+  return { diff, category };
+};
+
 export const actionLogSlice = createSlice({
   name: 'actionLog',
   initialState,
@@ -30,23 +72,12 @@ export const actionLogSlice = createSlice({
         type: string;
         payloadStr: string;
         diff: string;
-        category?: 'stats' | 'inventory' | 'combat' | 'system';
+        category?: ActionLogEntry['category'];
       }>
     ) => {
       const { type, payloadStr, diff, category = 'system' } = action.payload;
-      const entry: ActionLogEntry = {
-        id: `act_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-        type,
-        payloadStr,
-        diff,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        category,
-      };
-      state.history.unshift(entry);
-      if (state.history.length > 20) {
-        state.history.pop();
-      }
-      state.lastActionId = entry.id;
+      const { logId, timestamp } = readLogMeta(action as LoggedAction);
+      pushEntry(state, { id: logId, type, payloadStr, diff, timestamp, category });
     },
     clearActionLog: (state) => {
       state.history = [];
@@ -57,37 +88,15 @@ export const actionLogSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Automatically capture every action dispatched in other slices!
+    // Captura automáticamente cada acción despachada por los otros slices
     builder.addMatcher(
-      (action: UnknownAction) => {
-        // Only capture actions that are not from actionLog slice itself or internal Redux init
-        return (
-          typeof action.type === 'string' &&
-          !action.type.startsWith('actionLog/') &&
-          !action.type.startsWith('@@redux')
-        );
-      },
-      (state, action: UnknownAction & { payload?: unknown }) => {
-        let diff = 'MUTATION';
-        let category: 'stats' | 'inventory' | 'combat' | 'system' = 'system';
-
-        if (action.type.startsWith('stats/')) {
-          category = 'stats';
-          if (action.type.includes('increment')) diff = 'STAT +1';
-          else if (action.type.includes('decrement')) diff = 'STAT -1';
-          else if (action.type.includes('takeDamage')) diff = 'DMG_REC';
-          else if (action.type.includes('healHero')) diff = 'HEALED';
-          else if (action.type.includes('applyBuildPreset')) diff = 'PRESET';
-          else if (action.type.includes('resetStats')) diff = 'RESET';
-        } else if (action.type.startsWith('inventory/')) {
-          category = 'inventory';
-          if (action.type.includes('toggleEquipItem')) diff = 'TOGGLE_EQUIP';
-          else if (action.type.includes('clearEquipment')) diff = 'UNEQUIP_ALL';
-          else if (action.type.includes('generateLoot')) diff = 'LOOT_SPAWN';
-        } else if (action.type.startsWith('combat/')) {
-          category = 'combat';
-          diff = 'BOSS_HIT';
-        }
+      (action: UnknownAction) =>
+        typeof action.type === 'string' &&
+        !action.type.startsWith('actionLog/') &&
+        !action.type.startsWith('@@redux'),
+      (state, action: LoggedAction) => {
+        const { diff, category } = describeAction(action.type);
+        const { logId, timestamp } = readLogMeta(action);
 
         const payloadStr =
           action.payload !== undefined
@@ -96,20 +105,7 @@ export const actionLogSlice = createSlice({
               : String(action.payload)
             : '{}';
 
-        const entry: ActionLogEntry = {
-          id: `act_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-          type: action.type,
-          payloadStr,
-          diff,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          category,
-        };
-
-        state.history.unshift(entry);
-        if (state.history.length > 20) {
-          state.history.pop();
-        }
-        state.lastActionId = entry.id;
+        pushEntry(state, { id: logId, type: action.type, payloadStr, diff, timestamp, category });
       }
     );
   },

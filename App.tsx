@@ -8,36 +8,18 @@ import { theme } from './src/constants/theme';
 import { Header } from './src/components/Header';
 import { BottomNavBar, NavTab } from './src/components/BottomNavBar';
 import { HeroConsoleScreen } from './src/screens/HeroConsoleScreen';
-import { StateTreeScreen } from './src/screens/StateTreeScreen';
 import { DispatchStudioScreen } from './src/screens/DispatchStudioScreen';
-import { InventoryScreen } from './src/screens/InventoryScreen';
-import { ArchitectureAcademyScreen } from './src/screens/ArchitectureAcademyScreen';
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<NavTab>('console');
 
-  const renderActiveScreen = () => {
-    switch (activeTab) {
-      case 'console':
-        return <HeroConsoleScreen />;
-      case 'tree':
-        return <StateTreeScreen />;
-      case 'dispatch':
-        return <DispatchStudioScreen />;
-      case 'inventory':
-        return <InventoryScreen />;
-      case 'academy':
-        return <ArchitectureAcademyScreen />;
-      default:
-        return <HeroConsoleScreen />;
-    }
-  };
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
-      <Header currentTab={activeTab} onNavigateToTree={() => setActiveTab('tree')} />
-      <View style={styles.screenContainer}>{renderActiveScreen()}</View>
+      <Header currentTab={activeTab} />
+      <View style={styles.screenContainer}>
+        {activeTab === 'console' ? <HeroConsoleScreen /> : <DispatchStudioScreen />}
+      </View>
       <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
     </SafeAreaView>
   );

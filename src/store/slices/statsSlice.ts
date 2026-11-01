@@ -1,15 +1,25 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { StatsState, StatKey, BuildPreset } from '../../types';
 
+const BASE_STAT = 5;
+const SKILL_POINTS = 15;
+const MIN_STAT = 1;
+
 const initialState: StatsState = {
-  availablePoints: 15,
-  str: 5,
-  agi: 5,
-  int: 5,
+  availablePoints: SKILL_POINTS,
+  str: BASE_STAT,
+  agi: BASE_STAT,
+  int: BASE_STAT,
   currentHp: 100,
   maxHp: 100,
-  currentMp: 85,
-  maxMp: 100,
+  mpSpent: 0,
+};
+
+// Cada preset reparte el total del pool (3 × 5 base + 15 puntos = 30) en un solo dispatch
+const PRESETS: Record<BuildPreset, Record<StatKey, number>> = {
+  WARRIOR: { str: 18, agi: 7, int: 5 },
+  MAGE: { str: 5, agi: 7, int: 18 },
+  ROGUE: { str: 7, agi: 18, int: 5 },
 };
 
 export const statsSlice = createSlice({
@@ -25,7 +35,8 @@ export const statsSlice = createSlice({
     },
     decrementStat: (state, action: PayloadAction<StatKey>) => {
       const stat = action.payload;
-      if (state[stat] > 5) {
+      // Ningún atributo base puede bajar de 1
+      if (state[stat] > MIN_STAT) {
         state[stat] -= 1;
         state.availablePoints += 1;
       }
@@ -37,33 +48,25 @@ export const statsSlice = createSlice({
     healHero: (state, action: PayloadAction<number | undefined>) => {
       const healAmount = action.payload ?? state.maxHp;
       state.currentHp = Math.min(state.maxHp, state.currentHp + healAmount);
+      state.mpSpent = 0;
+    },
+    spendMana: (state, action: PayloadAction<number>) => {
+      state.mpSpent += Math.max(0, action.payload);
     },
     applyBuildPreset: (state, action: PayloadAction<BuildPreset>) => {
-      // Base stats = 5 each. 10 points are invested into the archetype's specialty
-      state.str = 5;
-      state.agi = 5;
-      state.int = 5;
-      state.availablePoints = 5; // 15 total minus 10 allocated
-
-      switch (action.payload) {
-        case 'WARRIOR':
-          state.str = 15;
-          break;
-        case 'MAGE':
-          state.int = 15;
-          break;
-        case 'ROGUE':
-          state.agi = 15;
-          break;
-      }
+      const build = PRESETS[action.payload];
+      state.str = build.str;
+      state.agi = build.agi;
+      state.int = build.int;
+      state.availablePoints = 0;
     },
     resetStats: (state) => {
-      state.str = 5;
-      state.agi = 5;
-      state.int = 5;
-      state.availablePoints = 15;
-      state.currentHp = 100;
-      state.currentMp = 85;
+      state.str = BASE_STAT;
+      state.agi = BASE_STAT;
+      state.int = BASE_STAT;
+      state.availablePoints = SKILL_POINTS;
+      state.currentHp = state.maxHp;
+      state.mpSpent = 0;
     },
   },
 });
@@ -73,6 +76,7 @@ export const {
   decrementStat,
   takeDamage,
   healHero,
+  spendMana,
   applyBuildPreset,
   resetStats,
 } = statsSlice.actions;

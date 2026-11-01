@@ -4,6 +4,7 @@ import statsReducer, { resetStats } from './slices/statsSlice';
 import inventoryReducer, { resetInventory } from './slices/inventorySlice';
 import combatReducer, { resetBoss } from './slices/combatSlice';
 import actionLogReducer, { resetActionLog } from './slices/actionLogSlice';
+import { actionMetaMiddleware } from './actionMetaMiddleware';
 
 const rootReducer = combineReducers({
   stats: statsReducer,
@@ -17,7 +18,7 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }),
+    }).concat(actionMetaMiddleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

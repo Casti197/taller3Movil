@@ -1,9 +1,11 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { CombatState } from '../../types';
 
+const BOSS_MAX_HP = 2500;
+
 const initialState: CombatState = {
-  bossHp: 2450,
-  bossMaxHp: 2500,
+  bossHp: BOSS_MAX_HP,
+  bossMaxHp: BOSS_MAX_HP,
   lastDamageDealt: 0,
   lastCombatFeedback: '',
 };
@@ -14,12 +16,16 @@ export const combatSlice = createSlice({
   reducers: {
     dealBossDamage: (state, action: PayloadAction<{ damage: number; combatPower: number }>) => {
       const { damage, combatPower } = action.payload;
+      if (state.bossHp <= 0) return;
       state.lastDamageDealt = damage;
       state.bossHp = Math.max(0, state.bossHp - damage);
-      state.lastCombatFeedback = `¡Ataque ejecutado! -${damage} DMG infligidos (${combatPower} CP)`;
+      state.lastCombatFeedback =
+        state.bossHp === 0
+          ? `¡Boss derrotado! Golpe final de -${damage} DMG (${combatPower} CP)`
+          : `¡Ataque ejecutado! -${damage} DMG infligidos (${combatPower} CP)`;
     },
     resetBoss: (state) => {
-      state.bossHp = 2500;
+      state.bossHp = BOSS_MAX_HP;
       state.lastDamageDealt = 0;
       state.lastCombatFeedback = 'El Boss ha renacido con vitalidad completa.';
     },

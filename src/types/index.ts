@@ -25,8 +25,8 @@ export interface StatsState {
   int: number;
   currentHp: number;
   maxHp: number;
-  currentMp: number;
-  maxMp: number;
+  // Maná gastado: el maná actual se deriva en selectores (maxMp depende de INT)
+  mpSpent: number;
 }
 
 export interface InventoryState {
@@ -62,9 +62,28 @@ export interface DerivedHeroStatus {
   isOverloaded: boolean;
   heroClass: string;
   heroIcon: string;
+  heroEmoji: string;
   auraColor: string;
   rawPower: number;
   combatPower: number;
   isDefeated: boolean;
   encumbranceRatio: number;
+}
+
+export type HpStatus = 'SANO' | 'HERIDO' | 'DERROTADO';
+
+export interface HeroVisualClass {
+  heroClass: string;
+  heroIcon: string;
+  heroEmoji: string;
+  auraColor: string;
+}
+
+export interface ManaStatus {
+  currentMp: number;
+  maxMp: number;
+}
+
+export interface ActionLogView extends ActionLogEntry {
+  displayPayload: string;
 }

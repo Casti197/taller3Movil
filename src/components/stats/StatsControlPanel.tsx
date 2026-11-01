@@ -89,7 +89,7 @@ export const StatsControlPanel: React.FC = () => {
         {statConfigs.map((cfg) => {
           const val = stats[cfg.key];
           const canIncrement = stats.availablePoints > 0;
-          const canDecrement = val > 5;
+          const canDecrement = val > 1;
           const meterPercent = Math.min(100, (val / 25) * 100);
 
           return (
@@ -177,7 +177,7 @@ export const StatsControlPanel: React.FC = () => {
           >
             <MaterialIcons name="shield" size={20} color={theme.colors.secondary} />
             <Text style={styles.presetBtnTitle}>Guerrero</Text>
-            <Text style={styles.presetBtnSub}>STR +10</Text>
+            <Text style={styles.presetBtnSub}>STR 18 · AGI 7</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -187,7 +187,7 @@ export const StatsControlPanel: React.FC = () => {
           >
             <MaterialIcons name="auto-fix-high" size={20} color={theme.colors.primary} />
             <Text style={styles.presetBtnTitle}>Mago</Text>
-            <Text style={styles.presetBtnSub}>INT +10</Text>
+            <Text style={styles.presetBtnSub}>INT 18 · AGI 7</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -197,7 +197,7 @@ export const StatsControlPanel: React.FC = () => {
           >
             <MaterialIcons name="flash-on" size={20} color={theme.colors.tertiary} />
             <Text style={styles.presetBtnTitle}>Pícaro</Text>
-            <Text style={styles.presetBtnSub}>AGI +10</Text>
+            <Text style={styles.presetBtnSub}>AGI 18 · STR 7</Text>
           </TouchableOpacity>
         </View>
       </View>

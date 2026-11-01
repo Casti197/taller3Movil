@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 
-export type NavTab = 'console' | 'tree' | 'dispatch' | 'inventory' | 'academy';
+export type NavTab = 'console' | 'dispatch';
 
 interface BottomNavBarProps {
   activeTab: NavTab;
@@ -13,10 +13,7 @@ interface BottomNavBarProps {
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({ activeTab, onTabChange }) => {
   const tabs: { key: NavTab; label: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: 'console', label: 'Console', icon: 'sports-martial-arts' },
-    { key: 'tree', label: 'State Tree', icon: 'account-tree' },
     { key: 'dispatch', label: 'Dispatch', icon: 'bolt' },
-    { key: 'inventory', label: 'Inventory', icon: 'shield' },
-    { key: 'academy', label: 'Academy', icon: 'menu-book' },
   ];
 
   return (

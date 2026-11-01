@@ -1,32 +1,51 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { selectCombat, selectActionLog, selectHeroComputedStatus } from '../../store/selectors';
-import { dealBossDamage } from '../../store/slices/combatSlice';
-import { takeDamage } from '../../store/slices/statsSlice';
+import {
+  selectCombat,
+  selectRecentActions,
+  selectCombatPower,
+  selectAttackDamage,
+  selectCanAttack,
+  selectHpStatus,
+  selectMana,
+  ATTACK_MP_COST,
+  BOSS_COUNTER_DAMAGE,
+} from '../../store/selectors';
+import { dealBossDamage, resetBoss } from '../../store/slices/combatSlice';
+import { takeDamage, healHero, spendMana } from '../../store/slices/statsSlice';
 
 export const ReduxLiveInspector: React.FC = () => {
   const dispatch = useAppDispatch();
   const combat = useAppSelector(selectCombat);
-  const actionLog = useAppSelector(selectActionLog);
-  const status = useAppSelector(selectHeroComputedStatus);
-
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const recentActions = useAppSelector(selectRecentActions);
+  const combatPower = useAppSelector(selectCombatPower);
+  const attackDamage = useAppSelector(selectAttackDamage);
+  const canAttack = useAppSelector(selectCanAttack);
+  const hpStatus = useAppSelector(selectHpStatus);
+  const mana = useAppSelector(selectMana);
 
   const handleAttackBoss = () => {
-    const damage = Math.max(35, Math.round(status.combatPower * 1.5));
-    dispatch(dealBossDamage({ damage, combatPower: status.combatPower }));
-
-    // Boss retaliates with 15 counter-damage to test hero HP reactivity!
-    dispatch(takeDamage(15));
-
-    setFeedback(`¡Impacto directo! -${damage} DMG infligidos (${status.combatPower} CP)`);
-    setTimeout(() => {
-      setFeedback(null);
-    }, 2500);
+    dispatch(spendMana(ATTACK_MP_COST));
+    dispatch(dealBossDamage({ damage: attackDamage, combatPower }));
+    // El Boss contraataca para evidenciar la reactividad del HP del héroe
+    dispatch(takeDamage(BOSS_COUNTER_DAMAGE));
   };
+
+  const handleHeal = () => {
+    dispatch(healHero(undefined));
+  };
+
+  const handleResetBoss = () => {
+    dispatch(resetBoss());
+  };
+
+  let attackHint = `-${attackDamage} DMG · ${ATTACK_MP_COST} MP`;
+  if (hpStatus === 'DERROTADO') attackHint = 'Héroe derrotado: cúrate';
+  else if (combat.bossHp <= 0) attackHint = 'Boss vencido';
+  else if (mana.currentMp < ATTACK_MP_COST) attackHint = 'Sin maná: cúrate';
 
   const bossHpPercent = Math.max(0, Math.min(100, (combat.bossHp / combat.bossMaxHp) * 100));
 
@@ -50,12 +69,7 @@ export const ReduxLiveInspector: React.FC = () => {
         <View style={styles.bossTopRow}>
           <View style={styles.bossIdentity}>
             <View style={styles.bossAvatarBox}>
-              <Image
-                source={{
-                  uri: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=300&q=80',
-                }}
-                style={styles.bossAvatar}
-              />
+              <Text style={styles.bossAvatar}>{combat.bossHp > 0 ? '👹' : '☠️'}</Text>
             </View>
 
             <View style={styles.bossTexts}>
@@ -72,8 +86,9 @@ export const ReduxLiveInspector: React.FC = () => {
           </View>
 
           <TouchableOpacity
-            style={styles.attackBtn}
+            style={[styles.attackBtn, !canAttack && styles.btnDisabled]}
             onPress={handleAttackBoss}
+            disabled={!canAttack}
             activeOpacity={0.7}
           >
             <MaterialIcons name="sports-martial-arts" size={16} color={theme.colors.onSecondary} />
@@ -86,10 +101,27 @@ export const ReduxLiveInspector: React.FC = () => {
           <View style={[styles.bossHpFill, { width: `${bossHpPercent}%` }]} />
         </View>
 
-        {/* Combat Feedback Notification */}
-        {feedback && (
+        {/* Combat Actions */}
+        <View style={styles.combatActionsRow}>
+          <Text style={styles.attackHint}>{attackHint}</Text>
+          <View style={styles.combatButtons}>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleHeal} activeOpacity={0.7}>
+              <MaterialIcons name="healing" size={14} color={theme.colors.tertiary} />
+              <Text style={[styles.secondaryBtnText, { color: theme.colors.tertiary }]}>Curar</Text>
+            </TouchableOpacity>
+            {combat.bossHp <= 0 && (
+              <TouchableOpacity style={styles.secondaryBtn} onPress={handleResetBoss} activeOpacity={0.7}>
+                <MaterialIcons name="replay" size={14} color={theme.colors.onSurfaceVariant} />
+                <Text style={styles.secondaryBtnText}>Revivir Boss</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Combat Feedback Notification (leído del combatSlice) */}
+        {combat.lastCombatFeedback !== '' && (
           <View style={styles.feedbackBox}>
-            <Text style={styles.feedbackText}>{feedback}</Text>
+            <Text style={styles.feedbackText}>{combat.lastCombatFeedback}</Text>
           </View>
         )}
       </View>
@@ -102,14 +134,14 @@ export const ReduxLiveInspector: React.FC = () => {
         </View>
 
         <View style={styles.streamContainer}>
-          {actionLog.history.length === 0 ? (
+          {recentActions.length === 0 ? (
             <View style={styles.emptyStreamBox}>
               <Text style={styles.emptyStreamText}>
                 Esperando despachos de acciones... Realiza cambios en los paneles para ver mutaciones en vivo.
               </Text>
             </View>
           ) : (
-            actionLog.history.slice(0, 5).map((log, index) => {
+            recentActions.map((log, index) => {
               const isFirst = index === 0;
               let dotColor = theme.colors.outline;
               if (log.category === 'stats') dotColor = theme.colors.primary;
@@ -121,7 +153,10 @@ export const ReduxLiveInspector: React.FC = () => {
                   <View style={styles.logLeft}>
                     <View style={[styles.logDot, { backgroundColor: dotColor }]} />
                     <Text style={styles.logType} numberOfLines={1}>
-                      {log.type}
+                      [{log.type}]
+                      {log.displayPayload !== '{}' && (
+                        <Text style={styles.logPayload}> -&gt; {log.displayPayload}</Text>
+                      )}
                     </Text>
                   </View>
 
@@ -221,8 +256,46 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceContainerHighest,
   },
   bossAvatar: {
-    width: '100%',
-    height: '100%',
+    fontSize: 24,
+    lineHeight: 38,
+    textAlign: 'center',
+  },
+  btnDisabled: {
+    opacity: 0.4,
+  },
+  combatActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  attackHint: {
+    flex: 1,
+    fontSize: 10,
+    fontFamily: 'monospace',
+    color: theme.colors.onSurfaceVariant,
+  },
+  combatButtons: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.colors.surfaceContainerHigh,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: theme.borderRadius.sm,
+  },
+  secondaryBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.colors.onSurfaceVariant,
+  },
+  logPayload: {
+    color: theme.colors.tertiary,
   },
   bossTexts: {
     flex: 1,
